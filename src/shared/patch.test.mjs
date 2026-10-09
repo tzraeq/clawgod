@@ -123,6 +123,7 @@ try {
     for (const [label, condition] of [
       ['inline provider', 'provider!=="firstParty"&&!isAws(provider)&&(model==="claude-opus-4-6"||model==="claude-sonnet-4-6"||model.includes("haiku"))'],
       ['provider helper', 'isThirdParty()&&(model==="claude-opus-4-6"||model==="claude-sonnet-4-6"||model.includes("haiku"))'],
+      ['2.1.295 Haiku exception', 'isThirdParty()&&(model==="claude-opus-4-6"||model==="claude-sonnet-4-6"||model.includes("haiku")&&model!=="claude-haiku-5-5")'],
     ]) {
       const source = `function isThirdParty(){return provider!=="firstParty"&&!isAws(provider)}function isAws(value){return value==="anthropicAws"}function supports(model){if(${condition})return!1;return!0}`;
       const target = join(testDir, graph ? 'bunfs/auto-mode.js' : 'cli.original.cjs');
@@ -131,11 +132,14 @@ try {
       const output = execFileSync(process.execPath, [join(testDir, 'patch.mjs')], { encoding: 'utf8' });
       assert.match(output, /Auto-mode unlock for third-party API \(inline gate\) \(1 replacement in 1 file\)/, label);
       const patched = readFileSync(target, 'utf8');
-      for (const toggle of [false, true]) {
+      for (const toggle of [undefined, false, true]) {
         for (const provider of ['firstParty', 'anthropicAws', 'proxy']) {
           const context = { provider, __clawgodPatches: { 'auto-mode-inline-gate': toggle } };
-          const result = runInNewContext(`${patched};supports("claude-sonnet-4-6")`, context);
-          assert.equal(result, toggle || provider !== 'proxy', `${label}: ${provider}, toggle ${toggle}`);
+          for (const model of ['claude-opus-4-6', 'claude-sonnet-4-6', 'claude-haiku-4-5', 'claude-haiku-5-5', 'other']) {
+            const upstream = runInNewContext(`${source};supports(${JSON.stringify(model)})`, { provider });
+            const result = runInNewContext(`${patched};supports(${JSON.stringify(model)})`, context);
+            assert.equal(result, toggle === false ? upstream : true, `${label}: ${provider}, ${model}, toggle ${toggle}`);
+          }
         }
       }
     }

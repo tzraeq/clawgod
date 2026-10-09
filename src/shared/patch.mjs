@@ -338,7 +338,8 @@ const patches = [
     id: 'auto-mode-inline-gate',
     toggleable: true,
     name: 'Auto-mode unlock for third-party API (inline gate)',
-    pattern: /if\((?:([\w$]+)!=="firstParty"&&(?:\1!=="anthropicAws"|![\w$]+\(\1\))[^;]*|[\w$]+\(\)&&\([\w$]+==="claude-opus-4-6"\|\|[\w$]+==="claude-sonnet-4-6"\|\|[\w$]+\.includes\("haiku"\)\))\)return!1;/g,
+    // v2.1.295 excludes Haiku 5.5 from the restricted models.
+    pattern: /if\((?:([\w$]+)!=="firstParty"&&(?:\1!=="anthropicAws"|![\w$]+\(\1\))[^;]*|[\w$]+\(\)&&\(([\w$]+)==="claude-opus-4-6"\|\|\2==="claude-sonnet-4-6"\|\|\2\.includes\("haiku"\)(?:&&\2!=="claude-haiku-5-5")?\))\)return!1;/g,
     replacer: (m) => `if(globalThis.__clawgodPatches?.[${JSON.stringify('auto-mode-inline-gate')}]===!1&&` + m.slice(3, -10) + `)return!1;`,
     sentinel: '!=="firstParty"&&',
   },
